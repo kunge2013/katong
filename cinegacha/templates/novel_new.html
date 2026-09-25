@@ -1,0 +1,81 @@
+<!-- [AGC:FILE] tool=Cc author=fangkun date=2026-09-25 -->
+{% extends "base.html" %}
+
+{% block title %}创建小说 - 雪漫画{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>创建新小说</h2>
+
+    <!-- [AGC:START] tool=Cc author=fangkun -->
+    <!-- 方式 1: 从知乎下载 -->
+    <h3>方式 1: 从知乎下载</h3>
+    <form id="download-form">
+        <label for="dl-name">小说名称（可选，默认使用专栏标题）</label>
+        <input type="text" id="dl-name" name="name" placeholder="留空则自动使用专栏标题">
+
+        <label for="dl-url">知乎付费专栏 URL *</label>
+        <input type="text" id="dl-url" name="url" required placeholder="https://www.zhihu.com/market/paid_column/...">
+
+        <button type="submit" class="btn btn-success" id="download-btn">从知乎下载</button>
+        <a href="/novels" class="btn">取消</a>
+    </form>
+
+    <div id="download-status" style="margin-top: 1rem;"></div>
+
+    <hr style="margin: 2rem 0;">
+    <!-- [AGC:END] -->
+
+    <!-- 方式 2: 手动创建 -->
+    <h3>方式 2: 手动创建</h3>
+    <form hx-post="/api/novels" hx-swap="none" hx-on::after-request="if(event.detail.successful) window.location='/novels'">
+        <label for="name">小说名称 *</label>
+        <input type="text" id="name" name="name" required placeholder="例如：明溪传">
+
+        <label for="text">小说文本（可选）</label>
+        <textarea id="text" name="text" placeholder="粘贴小说内容..."></textarea>
+
+        <label for="url">小说 URL（可选）</label>
+        <input type="text" id="url" name="url" placeholder="https://www.zhihu.com/...">
+
+        <button type="submit" class="btn">手动创建</button>
+    </form>
+</div>
+
+<!-- [AGC:START] tool=Cc author=fangkun -->
+<script>
+document.getElementById('download-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('download-btn');
+    const status = document.getElementById('download-status');
+    const url = document.getElementById('dl-url').value;
+    const name = document.getElementById('dl-name').value;
+
+    btn.disabled = true;
+    btn.textContent = '下载中...';
+    status.innerHTML = '<div class="alert">正在下载，请稍候...</div>';
+
+    try {
+        const resp = await fetch('/api/novels/download', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url, name: name || undefined}),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            status.innerHTML = '<div class="alert alert-success">下载成功！跳转到小说页...</div>';
+            setTimeout(() => window.location = '/novels/' + data.data.id, 1000);
+        } else {
+            status.innerHTML = `<div class="alert alert-error">${data.error.message}</div>`;
+            btn.disabled = false;
+            btn.textContent = '从知乎下载';
+        }
+    } catch (err) {
+        status.innerHTML = `<div class="alert alert-error">请求失败：${err}</div>`;
+        btn.disabled = false;
+        btn.textContent = '从知乎下载';
+    }
+});
+</script>
+<!-- [AGC:END] -->
+{% endblock %}

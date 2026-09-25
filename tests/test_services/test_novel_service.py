@@ -1,6 +1,7 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 import pytest
+from unittest.mock import patch
 from cinegacha import db
 from cinegacha.services.novel_service import NovelService
 
@@ -26,14 +27,15 @@ def test_create_novel_from_text(service, app):
 
 
 def test_create_novel_from_url(service, app):
-    """从 URL 创建小说"""
+    """从 URL 创建小说（非知乎 URL 仅保存）"""
     with app.app_context():
         novel = service.create_novel(
-            name="知乎小说",
-            url="https://www.zhihu.com/market/paid_column/123"
+            name="其他小说",
+            url="https://example.com/novel/123"
         )
 
-        assert novel.share_url.startswith("https://www.zhihu.com")
+        assert novel.share_url == "https://example.com/novel/123"
+        assert novel.original_text == ""
 
 
 def test_clean_text(service, app):
@@ -94,6 +96,37 @@ def test_update_novel(service, app):
         assert updated.name == "更新后"
 
 
+def test_create_novel_with_zhihu_url_no_text_auto_downloads(service, app):
+    """create_novel 传入知乎 URL 且无 text 时自动下载"""
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls:
+        mock_settings_cls.return_value.get.return_value = "test-cookie"
+        mock_dl_cls.return_value.download_column.return_value = {
+            "title": "自动下载标题",
+            "sections": [],
+            "full_text": "自动下载的内容"
+        }
+        with app.app_context():
+            novel = service.create_novel(
+                name="Test",
+                url="https://www.zhihu.com/market/paid_column/1/section/2"
+            )
+            assert novel.name == "自动下载标题"
+            assert novel.original_text == "自动下载的内容"
+            assert novel.share_url == "https://www.zhihu.com/market/paid_column/1/section/2"
+
+
+def test_create_novel_with_non_zhihu_url_no_download(service, app):
+    """create_novel 传入非知乎 URL 且无 text 时仅保存 URL"""
+    with app.app_context():
+        novel = service.create_novel(
+            name="Test",
+            url="https://example.com/some/novel"
+        )
+        assert novel.share_url == "https://example.com/some/novel"
+        assert novel.original_text == ""
+
+
 def test_delete_novel(service, app):
     """删除小说"""
     with app.app_context():
@@ -106,3 +139,72 @@ def test_delete_novel(service, app):
         # 验证已删除
         retrieved = service.get_novel(novel_id)
         assert retrieved is None
+
+
+def test_download_from_url_creates_novel(service, app):
+    """download_from_url 创建小说"""
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls:
+        mock_settings_cls.return_value.get.return_value = "test-cookie"
+        mock_dl_cls.return_value.download_column.return_value = {
+            "title": "测试标题",
+            "sections": [],
+            "full_text": "下载的内容"
+        }
+        with app.app_context():
+            novel = service.download_from_url(
+                "https://www.zhihu.com/market/paid_column/1/section/2",
+                name="自定义名称"
+            )
+            assert novel.name == "自定义名称"
+            assert novel.original_text == "下载的内容"
+            assert novel.share_url == "https://www.zhihu.com/market/paid_column/1/section/2"
+            assert novel.word_count > 0
+
+
+def test_download_from_url_uses_title_when_no_name(service, app):
+    """download_from_url 不传 name 时使用专栏标题"""
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls:
+        mock_settings_cls.return_value.get.return_value = "test-cookie"
+        mock_dl_cls.return_value.download_column.return_value = {
+            "title": "专栏标题",
+            "sections": [],
+            "full_text": "内容"
+        }
+        with app.app_context():
+            novel = service.download_from_url(
+                "https://www.zhihu.com/market/paid_column/1/section/2"
+            )
+            assert novel.name == "专栏标题"
+
+
+def test_download_from_url_no_cookie_raises(service, app):
+    """download_from_url 无 cookie 抛 ZhihuAuthError"""
+    with patch('cinegacha.services.novel_service.SettingsService') as mock_cls:
+        mock_cls.return_value.get.return_value = None
+        from cinegacha.services.zhihu_downloader import ZhihuAuthError
+        with app.app_context():
+            with pytest.raises(ZhihuAuthError):
+                service.download_from_url(
+                    "https://www.zhihu.com/market/paid_column/1/section/2"
+                )
+
+
+def test_download_from_url_clean_failure_not_fatal(service, app):
+    """download_from_url 清洗失败不影响下载"""
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls, \
+         patch.object(NovelService, 'clean_text', side_effect=Exception("clean error")):
+        mock_settings_cls.return_value.get.return_value = "test-cookie"
+        mock_dl_cls.return_value.download_column.return_value = {
+            "title": "标题",
+            "sections": [],
+            "full_text": "内容"
+        }
+        with app.app_context():
+            novel = service.download_from_url(
+                "https://www.zhihu.com/market/paid_column/1/section/2"
+            )
+            assert novel.name == "标题"
+            assert novel.original_text == "内容"

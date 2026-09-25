@@ -1,6 +1,7 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 import pytest
+from unittest.mock import patch
 from cinegacha import db
 from cinegacha.models.novel import Novel
 
@@ -137,3 +138,103 @@ def test_delete_novel_api(client):
     # 验证已删除
     get_resp = client.get(f'/api/novels/{novel_id}')
     assert get_resp.status_code == 404
+
+
+# ── Download endpoint tests ──────────────────────────────────────────
+
+
+# [AGC:START] tool=Cc author=fangkun
+def test_download_novel_success(client):
+    """POST /api/novels/download - 下载成功"""
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls:
+        mock_settings = mock_settings_cls.return_value
+        mock_settings.get.return_value = "test-cookie"
+        mock_dl = mock_dl_cls.return_value
+        mock_dl.download_column.return_value = {
+            "title": "测试小说",
+            "sections": [{"id": 1, "title": "第一章", "text": "内容"}],
+            "full_text": "测试内容"
+        }
+        response = client.post(
+            '/api/novels/download',
+            json={"url": "https://www.zhihu.com/market/paid_column/123/section/456"}
+        )
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['data']['name'] == '测试小说'
+        assert data['data']['word_count'] == 4  # len("测试内容")
+# [AGC:END]
+
+
+# [AGC:START] tool=Cc author=fangkun
+def test_download_novel_missing_url(client):
+    """POST /api/novels/download - 缺少 URL"""
+    response = client.post('/api/novels/download', json={})
+    assert response.status_code == 400
+# [AGC:END]
+
+
+# [AGC:START] tool=Cc author=fangkun
+def test_download_novel_invalid_url(client):
+    """POST /api/novels/download - 无效 URL 格式"""
+    response = client.post('/api/novels/download',
+                          json={"url": "https://example.com/foo"})
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data['error']['code'] == 'INVALID_URL'
+# [AGC:END]
+
+
+# [AGC:START] tool=Cc author=fangkun
+def test_download_novel_no_cookie(client):
+    """POST /api/novels/download - 未登录知乎"""
+    with patch('cinegacha.services.novel_service.SettingsService') as mock_cls:
+        mock_settings = mock_cls.return_value
+        mock_settings.get.return_value = None
+        response = client.post(
+            '/api/novels/download',
+            json={"url": "https://www.zhihu.com/market/paid_column/123/section/456"}
+        )
+        assert response.status_code == 401
+        data = response.get_json()
+        assert data['error']['code'] == 'AUTH_REQUIRED'
+# [AGC:END]
+
+
+# [AGC:START] tool=Cc author=fangkun
+def test_download_novel_scrape_error(client):
+    """POST /api/novels/download - 抓取失败"""
+    from cinegacha.services.zhihu_downloader import ZhihuScrapeError
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls:
+        mock_settings_cls.return_value.get.return_value = "test-cookie"
+        mock_dl_cls.return_value.download_column.side_effect = ZhihuScrapeError("network error")
+        response = client.post(
+            '/api/novels/download',
+            json={"url": "https://www.zhihu.com/market/paid_column/123/section/456"}
+        )
+        assert response.status_code == 502
+# [AGC:END]
+
+
+# [AGC:START] tool=Cc author=fangkun
+def test_create_novel_with_zhihu_url_auto_downloads(client):
+    """POST /api/novels - 传入知乎 URL 时自动下载"""
+    with patch('cinegacha.services.novel_service.ZhihuDownloader') as mock_dl_cls, \
+         patch('cinegacha.services.novel_service.SettingsService') as mock_settings_cls:
+        mock_settings_cls.return_value.get.return_value = "test-cookie"
+        mock_dl_cls.return_value.download_column.return_value = {
+            "title": "Auto",
+            "sections": [],
+            "full_text": "自动下载的内容"
+        }
+        response = client.post(
+            '/api/novels',
+            json={"name": "Test", "url": "https://www.zhihu.com/market/paid_column/1/section/2"}
+        )
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['data']['name'] == 'Auto'
+# [AGC:END]

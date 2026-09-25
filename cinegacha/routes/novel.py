@@ -2,6 +2,11 @@
 
 from flask import Blueprint, request, jsonify
 from cinegacha.services.novel_service import NovelService
+from cinegacha.services.zhihu_downloader import (
+    ZhihuUrlError,
+    ZhihuAuthError,
+    ZhihuScrapeError,
+)
 
 novel_bp = Blueprint('novel', __name__, url_prefix='/api/novels')
 
@@ -50,11 +55,95 @@ def create_novel():
             "message": "小说创建成功"
         }), 201
 
+    # [AGC:START] tool=Cc author=fangkun
+    except ZhihuUrlError as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "INVALID_URL", "message": str(e)}
+        }), 400
+
+    except ZhihuAuthError as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "AUTH_REQUIRED", "message": str(e)}
+        }), 401
+
+    except ZhihuScrapeError as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "SCRAPE_FAILED", "message": str(e)}
+        }), 502
+    # [AGC:END]
+
     except Exception as e:
         return jsonify({
             "success": False,
             "error": {"code": "CREATE_ERROR", "message": str(e)}
         }), 500
+
+
+# [AGC:START] tool=Cc author=fangkun
+@novel_bp.route('/download', methods=['POST'])
+def download_novel():
+    """从 URL 下载小说
+
+    Request Body:
+        {
+            "url": "https://www.zhihu.com/market/paid_column/...",
+            "name": "小说名称"  // 可选
+        }
+    """
+    data = request.get_json()
+    if not data or 'url' not in data:
+        return jsonify({
+            "success": False,
+            "error": {"code": "MISSING_URL", "message": "缺少 URL"}
+        }), 400
+
+    try:
+        service = NovelService()
+        novel = service.download_from_url(
+            url=data['url'],
+            name=data.get('name'),
+        )
+        return jsonify({
+            "success": True,
+            "data": {
+                "id": novel.id,
+                "name": novel.name,
+                "word_count": novel.word_count,
+                "share_url": novel.share_url,
+                "is_format_cleaned": novel.is_format_cleaned,
+                "is_serial_cleaned": novel.is_serial_cleaned,
+                "is_punct_cleaned": novel.is_punct_cleaned,
+            },
+            "message": "下载成功"
+        }), 201
+
+    except ZhihuUrlError as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "INVALID_URL", "message": str(e)}
+        }), 400
+
+    except ZhihuAuthError as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "AUTH_REQUIRED", "message": str(e)}
+        }), 401
+
+    except ZhihuScrapeError as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "SCRAPE_FAILED", "message": str(e)}
+        }), 502
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": {"code": "DOWNLOAD_ERROR", "message": str(e)}
+        }), 500
+# [AGC:END]
 
 
 @novel_bp.route('', methods=['GET'])
