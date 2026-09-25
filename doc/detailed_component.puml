@@ -1,0 +1,197 @@
+// [AGC:FILE] tool=Cc author=fangkun date=2026-08-15
+@startuml 雪漫画详细组件图
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 11
+skinparam package {
+    BackgroundColor<<ui>> #E8F5E9
+    BackgroundColor<<core>> #E3F2FD
+    BackgroundColor<<api>> #FFF3E0
+    BackgroundColor<<svc>> #FCE4EC
+    BackgroundColor<<util>> #F3E5F5
+}
+
+title 雪漫画（CineGacha）详细组件关系图
+
+package "cinegacha.ui (90 modules)" <<ui>> {
+    [main_window] as ui_main
+    [novel_center_page] as ui_novel
+    [novel_reading_page] as ui_reading
+    [script_list_page] as ui_script
+    [editor_page] as ui_editor
+    [role_center_page] as ui_role
+    [art_style_center_page] as ui_style
+    [prompt_library_page] as ui_prompt
+    [manga_export_dialog] as ui_export
+    [settings_page] as ui_settings
+    [account_pool_page] as ui_account
+    [generation_worker] as ui_gen_w
+    [prompt_generation_worker] as ui_prompt_w
+    [batch_generation_worker] as ui_batch_w
+    [one_click_manga_drama_worker] as ui_oneclick_w
+    [batch_hang_dialog] as ui_hang
+    [local_push_center] as ui_push
+}
+
+package "cinegacha.core (82 modules)" <<core>> {
+    [builtin_prompts_seed] as c_seed
+    [manga_derive_presets] as c_presets
+    [manga_derive_prompt_defaults] as c_derive
+    [manga_derive_affix_store] as c_affix
+    [storyboard_prompt_defaults] as c_storyboard
+    [context_generator] as c_context
+    [visual_prompt_template] as c_visual
+    [image_prompt_sanwei] as c_sanwei
+
+    [batch_hang_scheduler] as c_scheduler
+    [batch_hang_model_chain] as c_chain
+    [batch_hang_error_map] as c_errmap
+    [token_pool_manager] as c_token
+    [token_lock_manager] as c_toklock
+
+    [role_manager] as c_role
+    [vip_role_derive_presets] as c_vip_role
+    [main_image_optimize] as c_imgopt
+
+    [jianying_exporter] as c_jianying
+    [manga_image_model_resolve] as c_resolve
+    [manga_vip_random_watermark] as c_watermark
+    [upscale_worker] as c_upscale
+    [project_script_backup] as c_backup
+
+    [llm_client] as c_llm
+    [settings_manager] as c_settings
+    [auth_core] as c_auth
+    [security_guard] as c_guard
+    [vip_image_crypto] as c_crypto
+    [one_click_manga_drama_service] as c_oneclick
+}
+
+package "cinegacha.api (22 modules)" <<api>> {
+    [image_api] as a_img
+    [video_api] as a_vid
+    [jimeng_models] as a_jimeng
+    [volcengine_image] as a_volc
+    [openrouter_image] as a_or
+    [duomi_image/video] as a_duomi
+    [uumoshi_image/video] as a_uumoshi
+    [yunwu_gemini_image] as a_yunwu
+    [custom_pool_image/video] as a_custom
+    [async_task_poll] as a_poll
+    [upload_api] as a_upload
+}
+
+package "cinegacha.services (7 modules)" <<svc>> {
+    [service_manager] as s_mgr
+    [local_push_server] as s_push
+    [remote_push_poller] as s_poll
+    [coze_chat_client] as s_coze
+    [wrappers/flow_wrapper] as s_flow
+    [wrappers/grok_wrapper] as s_grok
+}
+
+package "cinegacha.utils (37 modules)" <<util>> {
+    [novel_downloader] as u_novel
+    [fanqie_downloader] as u_fanqie
+    [lofter_client] as u_lofter
+    [snowslide_client] as u_snow
+    [zhihu_downloader] as u_zhihu
+    [ken_burns_jianying] as u_kenburns
+    [phone_export] as u_phone
+    [video_concat] as u_vidcat
+    [thumbnail_generator] as u_thumb
+    [encryption_utils] as u_enc
+    [error_handler] as u_err
+    [logger] as u_log
+}
+
+database "SQLite\ndata.db (22 tables)" as db {
+    [novels] as t_novels
+    [projects] as t_projects
+    [scripts_list] as t_scripts
+    [scripts_camera] as t_camera
+    [roles] as t_roles
+    [prompts] as t_prompts
+    [settings] as t_settings
+    [image_tasks] as t_imgtask
+    [video_tasks] as t_vidtask
+}
+
+' UI to Core connections
+ui_novel --> c_seed : 初始化提示词
+ui_novel --> c_storyboard : 分镜拆分
+ui_novel --> u_novel : 小说下载
+ui_script --> c_derive : 推导图片提示词
+ui_script --> c_presets : 加载画风预设
+ui_script --> c_affix : 前后缀注入
+ui_script --> c_context : 角色/资产上下文
+ui_prompt_w --> c_visual : 视觉模板
+ui_prompt_w --> c_sanwei : 三维提示词
+ui_role --> c_role : 角色CRUD
+ui_role --> c_vip_role : VIP角色推导
+ui_style --> c_crypto : 解密VIP画风
+ui_gen_w --> c_scheduler : 提交生成任务
+ui_batch_w --> c_scheduler
+ui_hang --> c_scheduler
+ui_oneclick_w --> c_oneclick : 一键漫剧
+ui_export --> c_jianying : 剪映导出
+ui_export --> u_kenburns : Ken Burns运镜
+ui_export --> u_phone : 手机推送
+ui_account --> c_token : Token池管理
+ui_push --> s_push
+ui_settings --> c_settings
+
+' Core internal connections
+c_scheduler --> c_chain : 模型链选择
+c_scheduler --> c_errmap : 错误降级
+c_scheduler --> c_token : Token获取
+c_scheduler --> c_toklock : Token锁定
+c_derive --> c_context : 组装上下文
+c_derive --> c_presets : 预设参数
+c_jianying --> u_kenburns
+c_backup --> t_scripts : 备份分镜
+c_upscale --> c_imgopt : 优化主图
+c_resolve --> a_img : 路由模型
+c_oneclick --> c_scheduler
+c_oneclick --> c_derive
+c_oneclick --> c_role
+c_auth --> c_guard
+c_auth --> u_enc
+
+' Core to API
+c_scheduler --> a_img
+c_scheduler --> a_vid
+c_llm --> a_or
+c_llm --> s_coze
+c_llm --> s_flow
+c_llm --> s_grok
+a_img --> a_jimeng
+a_img --> a_volc
+a_img --> a_or
+a_img --> a_duomi
+a_img --> a_uumoshi
+a_img --> a_yunwu
+a_img --> a_custom
+a_vid --> a_poll : 异步轮询
+a_upload --> a_img
+
+' Utils connections
+u_novel --> u_fanqie
+u_novel --> u_zhihu
+u_snow --> s_push
+u_phone --> s_push
+u_vidcat --> u_thumb
+
+' All core to DB
+c_seed --> t_prompts
+c_settings --> t_settings
+c_role --> t_roles
+c_derive --> t_scripts
+c_scheduler --> t_imgtask
+c_scheduler --> t_vidtask
+c_backup --> t_projects
+c_backup --> t_novels
+
+@enduml

@@ -1,0 +1,169 @@
+// [AGC:FILE] tool=Cc author=fangkun date=2026-08-15
+@startuml 雪漫画业务流程图
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 12
+skinparam activity {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+    DiamondBackgroundColor #FFF3E0
+    DiamondBorderColor #E65100
+    StartColor #4CAF50
+    EndColor #F44336
+}
+
+title 雪漫画（CineGacha）核心业务流程图
+
+start
+
+:**Step 1: 小说导入**;
+note right
+  支持多种来源：
+  - 本地 TXT 文件
+  - 粘贴文本
+  - 番茄小说抓取
+  - 知乎文章下载
+  - LOFTER 文章导入
+  - 有道云笔记
+end note
+
+:**Step 2: 文本预处理**;
+fork
+  :格式清洗
+  (is_format_cleaned);
+fork again
+  :连载号清理
+  (is_serial_cleaned);
+fork again
+  :标点修正
+  (is_punct_cleaned);
+end fork
+
+:**Step 3: AI 文本处理管线**;
+partition "LLM 多阶段处理" {
+    :**3a. 角色提取**
+    提取角色名/外貌/身份
+    → character_text;
+    :**3b. 文案改写**
+    同义改写，不改剧情
+    → revised_text;
+    :**3c. 分镜拆分**
+    短句版/长句版
+    → script_text / storyboard_text;
+    :**3d. 开场白生成**
+    → opening_text;
+    :**3e. 小说评分**
+    AI 质量评分
+    → score_value / score_report;
+}
+
+:**Step 4: 创建项目**;
+note right
+  选择创作模式：
+  - manga（漫画多格模式）
+  - camera（视频镜头模式）
+  选择画风预设
+  （如 plot_manga_fusion_bw）
+end note
+
+if (模式选择?) then (manga 漫画)
+    :分镜写入 scripts_list 表;
+    :**Step 5a: 逐镜推导图片提示词**
+    LLM 生成三段式提示词：
+    1. 画风+多格场景总述
+    2. 版式逻辑（格子比例/动线/字框）
+    3. 固定负面后缀（反水印）;
+else (camera 视频)
+    :镜头写入 scripts_camera 表;
+    :**Step 5b: 逐镜推导视频提示词**
+    生成视频画面描述+首尾帧设定;
+endif
+
+:**Step 6: 角色与资产管理**;
+fork
+  :AI 推导角色视觉
+  (VIP角色推导，支持年龄段拆分);
+  :生成角色三视图;
+fork again
+  :上传/绑定参考图;
+  :创建道具/场景资产
+  (如婚书、木槿花);
+end fork
+:上下文生成器将角色/资产
+注入每镜提示词;
+
+:**Step 7: AI 批量生成**;
+partition "批量调度引擎" {
+    :提交分镜到 batch_hang_scheduler;
+    :Token 池管理器选择可用账号;
+    :模型链选择主模型;
+    while (还有未生成分镜?) is (是)
+        :调用图像 API
+        (即梦/火山/OpenRouter...);
+        if (生成成功?) then (成功)
+            :保存候选图到 candidate_images;
+            if (需要高清放大?) then (是)
+                :Real-ESRGAN 本地超分
+                (animevideov3-x4 模型);
+            else (否)
+            endif
+        else (失败)
+            :error_map 错误映射;
+            if (有备用模型?) then (是)
+                :model_chain 切换备用模型;
+                :Token 轮换;
+            else (否)
+                :记录失败，跳过;
+            endif
+        endif
+    end while (否)
+}
+
+:**Step 8: 主图选择与优化**;
+:用户从候选图中选择主图;
+:main_image_optimize 优化;
+:manga_vip_random_watermark
+可选随机水印;
+
+if (需要配音?) then (是)
+    :**Step 9a: TTS 配音**
+    创建 dubbing 工程
+    分配角色台词
+    生成音频;
+else (否)
+endif
+
+if (需要视频?) then (是)
+    :**Step 9b: 视频生成**
+    调用视频 API (Vidu/即梦...)
+    异步任务轮询
+    FFmpeg 合成;
+else (否)
+endif
+
+:**Step 10: 导出发布**;
+fork
+  :**剪映草稿导出**
+  pyJianYingDraft 生成
+  含 Ken Burns 运镜
+  旁白框/对白气泡;
+fork again
+  :**本地视频导出**
+  FFmpeg 合成 MP4;
+fork again
+  :**手机推送**
+  ADB/HDC 推送到设备
+  scrcpy 投屏预览;
+fork again
+  :**平台发布**
+  LOFTER / 雪崩平台;
+end fork
+
+:**Step 11: 项目备份**;
+:project_script_backup
+自动备份为 TXT;
+
+stop
+
+@enduml

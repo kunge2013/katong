@@ -1,0 +1,292 @@
+// [AGC:FILE] tool=Cc author=fangkun date=2026-08-15
+@startuml 雪漫画数据库ER图
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 11
+skinparam linetype ortho
+
+title 雪漫画（CineGacha）数据库 ER 图（22 表）
+
+entity "novels\n（小说）" as novels #E3F2FD {
+    * id : INTEGER <<PK>>
+    --
+    name : TEXT
+    content : TEXT
+    original_text : TEXT
+    character_text : TEXT
+    revised_text : TEXT
+    script_text : TEXT
+    storyboard_text : TEXT
+    opening_text : TEXT
+    is_format_cleaned : INTEGER
+    is_serial_cleaned : INTEGER
+    is_punct_cleaned : INTEGER
+    is_shot_cleaned : INTEGER
+    score_value : INTEGER
+    score_report : TEXT
+    share_url : TEXT
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+entity "projects\n（项目）" as projects #E8F5E9 {
+    * id : INTEGER <<PK>>
+    --
+    name : TEXT
+    novel_id : INTEGER <<FK>>
+    mode : TEXT  -- 'manga' or 'camera'
+    summary : TEXT
+    img_prompt_prefix : TEXT
+    img_prompt_suffix : TEXT
+    vid_prompt_prefix : TEXT
+    vid_prompt_suffix : TEXT
+    manga_derive_preset_id : TEXT
+    sync_roles_from_novel : INTEGER
+    sync_presets_from_novel : INTEGER
+    created_at : TIMESTAMP
+}
+
+entity "scripts_list\n（漫画分镜-manga模式）" as scripts_list #FFF3E0 {
+    * id : INTEGER <<PK>>
+    --
+    project_id : INTEGER <<FK>>
+    order_index : INTEGER
+    shot_id : INTEGER
+    shot_index : INTEGER
+    content : TEXT
+    subtitles : TEXT (JSON)
+    image_prompt : TEXT
+    video_prompt : TEXT
+    screen_prompt : TEXT
+    main_image : TEXT
+    main_video : TEXT
+    candidate_images : TEXT (JSON)
+    candidate_videos : TEXT (JSON)
+    selected_candidate : INTEGER
+    reference_image : TEXT
+    presets : TEXT
+    duration : REAL
+    start_time : REAL
+    end_time : REAL
+    is_main_locked : INTEGER
+    generation_enabled : INTEGER
+    vip_scene_name : TEXT
+}
+
+entity "scripts_camera\n（视频镜头-camera模式）" as scripts_camera #FFF3E0 {
+    * id : INTEGER <<FK>>
+    --
+    project_id : INTEGER <<FK>>
+    order_index : INTEGER
+    time_range : TEXT
+    content : TEXT
+    video_path : TEXT
+    first_frame_path : TEXT
+    last_frame_path : TEXT
+    role : TEXT
+    novel_id : INTEGER
+}
+
+entity "roles\n（角色/资产）" as roles #FCE4EC {
+    * id : INTEGER <<PK>>
+    --
+    name : TEXT
+    alias : TEXT
+    content : TEXT
+    content_word2 : TEXT
+    cover_url : TEXT
+    role_url : TEXT
+    video_url : TEXT
+    image_path : TEXT
+    audio_path : TEXT
+    novel_id : INTEGER <<FK>>
+    project_id : TEXT
+    role_kind : TEXT
+    bound_script_user_id : INTEGER
+    order_index : INTEGER
+    portrait_preview_json : TEXT
+    video_preview_json : TEXT
+    portrait_ref_new_json : TEXT
+    reference_image_url : TEXT
+    asset_art_style_json : TEXT
+}
+
+entity "role_tags\n（角色标签）" as role_tags #F8BBD0 {
+    * id : INTEGER <<PK>>
+    --
+    role_id : INTEGER <<FK>>
+    tag_category : TEXT
+    tag_value : TEXT
+}
+
+entity "category_tags\n（分类标签）" as category_tags #F8BBD0 {
+    * id : INTEGER <<PK>>
+    --
+    category : TEXT
+    tag_value : TEXT
+    display_order : INTEGER
+}
+
+entity "prompts\n（提示词模板）" as prompts #E1BEE7 {
+    * id : INTEGER <<PK>>
+    --
+    title : TEXT
+    content : TEXT
+    category : TEXT
+    is_system : INTEGER
+    created_at : TEXT
+    updated_at : TEXT
+}
+
+entity "settings\n（全局设置 KV）" as settings #D7CCC8 {
+    * key : TEXT <<PK>>
+    --
+    value : TEXT
+}
+
+entity "image_tasks\n（图片生成任务）" as image_tasks #C8E6C9 {
+    * id : INTEGER <<PK>>
+    --
+    task_id : TEXT <<UK>>
+    script_id : INTEGER <<FK>>
+    status : TEXT
+    image_path : TEXT
+    image_url : TEXT
+    model : TEXT
+    aspect_ratio : TEXT
+    resolution : TEXT
+    task_source : TEXT
+    project_id : INTEGER
+    viewed : INTEGER
+    completed_at : TIMESTAMP
+}
+
+entity "video_tasks\n（视频生成任务）" as video_tasks #C8E6C9 {
+    * id : INTEGER <<PK>>
+    --
+    task_id : TEXT <<UK>>
+    script_id : INTEGER <<FK>>
+    status : TEXT
+    video_path : TEXT
+    video_url : TEXT
+    aspect_ratio : TEXT
+    duration : INTEGER
+    remote_async_task_id : TEXT
+    async_task_status : TEXT
+    async_request_payload : TEXT
+    async_last_error : TEXT
+}
+
+entity "hd_tasks\n（高清放大任务）" as hd_tasks #C8E6C9 {
+    * id : INTEGER <<PK>>
+    --
+    task_id : TEXT <<UK>>
+    source_task_id : TEXT
+    task_type : TEXT
+    script_id : INTEGER <<FK>>
+    status : TEXT
+    file_path : TEXT
+    thumbnail_path : TEXT
+}
+
+entity "generated_tasks\n（通用生成任务）" as generated_tasks #C8E6C9 {
+    * id : INTEGER <<PK>>
+    --
+    task_id : TEXT <<UK>>
+    prompt : TEXT
+    result_url : TEXT
+    local_path : TEXT
+}
+
+entity "dubbings\n（配音工程）" as dubbings #B2EBF2 {
+    * id : INTEGER <<PK>>
+    --
+    title : TEXT
+    roles : TEXT (JSON)
+    lines : TEXT (JSON)
+    original_text : TEXT
+    final_audio_path : TEXT
+}
+
+entity "tts_voices\n（TTS语音库）" as tts_voices #B2EBF2 {
+    * id : INTEGER <<PK>>
+    --
+    name : TEXT <<UK>>
+    description : TEXT
+    audio_path : TEXT
+}
+
+entity "jimeng_tokens_domestic\n（即梦国内Token池）" as jimeng_dom #FFCCBC {
+    * id : INTEGER <<PK>>
+    --
+    token : TEXT <<UK>>
+    remark : TEXT
+    valid : INTEGER
+    points : INTEGER
+    active_session : INTEGER
+    last_checked : TIMESTAMP
+}
+
+entity "jimeng_tokens_foreign\n（即梦海外Token池）" as jimeng_for #FFCCBC {
+    * id : INTEGER <<PK>>
+    --
+    token : TEXT <<UK>>
+    remark : TEXT
+    valid : INTEGER
+    points : INTEGER
+    active_session : INTEGER
+}
+
+entity "snowslide_alias_success\n（雪崩别名成功记录）" as snow_alias #DCEDC8 {
+    * id : INTEGER <<PK>>
+    --
+    project_id : INTEGER
+    channel : TEXT
+    keyword : TEXT
+}
+
+entity "lofter_alias_success\n（LOFTER别名成功记录）" as lofter_alias #DCEDC8 {
+    * id : INTEGER <<PK>>
+    --
+    project_id : INTEGER
+    keyword : TEXT
+}
+
+entity "_schema_migrations\n（Schema迁移记录）" as migrations #CFD8DC {
+    * name : TEXT <<PK>>
+}
+
+novels ||--o{ projects : "1:N 一部小说可创建多个项目"
+projects ||--o{ scripts_list : "1:N manga模式分镜"
+projects ||--o{ scripts_camera : "1:N camera模式镜头"
+novels ||--o{ roles : "1:N 角色按小说隔离"
+roles ||--o{ role_tags : "1:N 角色多标签"
+scripts_camera ||--o{ image_tasks : "1:N 图片任务"
+scripts_camera ||--o{ video_tasks : "1:N 视频任务"
+scripts_camera ||--o{ hd_tasks : "1:N 高清任务"
+projects ||--o{ snow_alias : "1:N"
+projects ||--o{ lofter_alias : "1:N"
+
+note right of novels
+  AI处理管线多阶段字段：
+  original_text → character_text
+  → revised_text → script_text
+  → storyboard_text → opening_text
+  每个阶段有独立的时间戳和清洗标记
+end note
+
+note right of projects
+  mode 字段决定使用哪个分镜表：
+  'manga' → scripts_list
+  'camera' → scripts_camera
+end note
+
+note right of scripts_list
+  image_prompt 存储完整三段式提示词：
+  1. 画风+场景总述
+  2. 版式逻辑详解
+  3. 固定负面后缀（反水印）
+end note
+
+@enduml

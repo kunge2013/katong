@@ -1,0 +1,111 @@
+// [AGC:FILE] tool=Cc author=fangkun date=2026-08-15
+@startuml 雪漫画高级架构图
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 12
+
+title 雪漫画（CineGacha）高级系统架构图
+
+actor "创作者" as user
+actor "手机设备" as phone
+
+package "桌面应用（雪漫画.exe）" {
+
+    package "表现层 - PyQt6 UI" as ui #E8F5E9 {
+        [主窗口\nmain_window] as main_win
+        [小说中心\nnovel_center] as novel_ui
+        [分镜编辑器\nscript_list_page] as script_ui
+        [角色中心\nrole_center] as role_ui
+        [画风库\nart_style_center] as style_ui
+        [导出对话框\nmanga_export] as export_ui
+    }
+
+    package "业务核心层 - cinegacha.core" as core #E3F2FD {
+        [提示词系统\nprompts/derive] as prompt_sys
+        [分镜推导\nmanga_derive] as derive_sys
+        [批量调度\nbatch_hang] as batch_sys
+        [角色管理\nrole_manager] as role_mgr
+        [导出器\njianying_exporter] as exporter
+        [Token池管理\ntoken_pool] as token_mgr
+        [安全授权\nauth/guard] as security
+    }
+
+    package "API 适配层 - cinegacha.api" as api #FFF3E0 {
+        [图像API\n11家服务商] as img_api
+        [视频API\n6家服务商] as vid_api
+        [LLM API\nDeepSeek/GRSai等] as llm_api
+    }
+
+    package "基础设施层" as infra #F3E5F5 {
+        [SQLite\ndata.db] as db
+        [FFmpeg\n视频合成] as ffmpeg
+        [Real-ESRGAN\n本地超分] as esrgan
+        [TTS引擎\n配音] as tts
+        [ADB/HDC\n设备控制] as adb
+    }
+}
+
+cloud "AI 云服务" as cloud {
+    [即梦/火山引擎\n图像生成] as ai_img
+    [Vidu/Seedance\n视频生成] as ai_vid
+    [DeepSeek/GRSai\n文本LLM] as ai_llm
+}
+
+cloud "内容平台" as platforms {
+    [番茄小说] as fanqie
+    [知乎] as zhihu
+    [LOFTER] as lofter
+    [雪崩平台] as snowslide
+}
+
+database "本地文件系统" as fs {
+    [Output/\n生成图片/视频] as output
+    [画风库/\n159种画风] as styles
+    [data/\n备份/账号] as data_dir
+}
+
+user --> main_win : 操作
+main_win --> novel_ui
+main_win --> script_ui
+main_win --> role_ui
+main_win --> style_ui
+main_win --> export_ui
+
+novel_ui --> derive_sys : 文本处理
+script_ui --> prompt_sys : 提示词生成
+script_ui --> batch_sys : 批量生图
+role_ui --> role_mgr : 角色设计
+style_ui --> prompt_sys : 画风选择
+export_ui --> exporter : 导出作品
+
+derive_sys --> llm_api
+prompt_sys --> llm_api
+batch_sys --> img_api
+batch_sys --> token_mgr
+role_mgr --> img_api
+exporter --> ffmpeg
+exporter --> adb
+
+img_api --> ai_img
+vid_api --> ai_vid
+llm_api --> ai_llm
+
+novel_ui ..> fanqie : 抓取
+novel_ui ..> zhihu : 抓取
+exporter ..> lofter : 发布
+exporter ..> snowslide : 发布
+
+adb --> phone : 投屏/推送
+
+core --> db
+core --> fs
+batch_sys --> esrgan : 高清放大
+exporter --> tts : 配音合成
+
+db --> data_dir
+styles --> fs
+output --> fs
+
+@enduml

@@ -1,0 +1,72 @@
+// [AGC:FILE] tool=Cc author=fangkun date=2026-08-15
+@startuml 雪漫画技术栈分层图
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 12
+skinparam rectangle {
+    BackgroundColor<<layer>> #F5F5F5
+    BorderColor #9E9E9E
+}
+
+title 雪漫画（CineGacha）技术栈分层图
+
+rectangle "**表示层 (Presentation)**" <<layer>> as L1 #E8F5E9 {
+    rectangle "PyQt6 6.10.2\n(Widgets / WebEngine / Multimedia)" as pyqt #C8E6C9
+    rectangle "Qt6 原生框架\n(SQL / SVG / ImageFormats)" as qt #A5D6A7
+    rectangle "自定义 UI 组件\n(90 个页面/对话框/Widget)" as widgets #C8E6C9
+}
+
+rectangle "**应用层 (Application Services)**" <<layer>> as L2 #E3F2FD {
+    rectangle "PyQt6 Worker 线程\n(prompt_generation / batch_generation / one_click_manga)" as workers #BBDEFB
+    rectangle "cinegacha.services\n(推送/Coze/Flow/Grok)" as svcs #BBDEFB
+    rectangle "cinegacha.update_system\n(更新检查/下载/签名验证)" as updater #BBDEFB
+}
+
+rectangle "**业务逻辑层 (Business Logic)**" <<layer>> as L3 #FFF3E0 {
+    rectangle "提示词引擎\n(builtin_prompts / manga_derive\nvisual_template / vip_role_derive)" as biz_prompt #FFE0B2
+    rectangle "生成调度\n(batch_hang_scheduler / model_chain\nerror_map / token_pool)" as biz_batch #FFE0B2
+    rectangle "角色与资产管理\n(role_manager / context_generator\nimage_library / music_library)" as biz_role #FFE0B2
+    rectangle "导出管线\n(jianying_exporter / ken_burns\nvideo_concat / phone_export)" as biz_export #FFE0B2
+    rectangle "安全授权\n(auth_core / security_guard\nvip_image_crypto / xmh_guard.pyd)" as biz_auth #FFE0B2
+}
+
+rectangle "**API 适配层 (API Adapters)**" <<layer>> as L4 #FCE4EC {
+    rectangle "**图像生成 (11家)**\n即梦 | 火山引擎 | OpenRouter | 多米\nUumoshi | 云雾Gemini | 土豆GPT\nYhui | CloseAI | Apimart | 自定义池" as api_img #F8BBD0
+    rectangle "**视频生成 (6家)**\nApimart | 多米 | Uumoshi | 云雾OpenAI\nVidu | 自定义池 | Seedance" as api_vid #F8BBD0
+    rectangle "**LLM 文本服务**\nDeepSeek | GRSai | 火山引擎\nOpenRouter | Coze | Flow | Grok" as api_llm #F8BBD0
+}
+
+rectangle "**数据层 (Data Access)**" <<layer>> as L5 #F3E5F5 {
+    rectangle "SQLite 3\n(22 表, 本地单文件)" as sqlite #E1BEE7
+    rectangle "SQLAlchemy ORM\n(数据模型/迁移)" as orm #E1BEE7
+    rectangle "asyncpg\n(远程同步, 可选)" as asyncpg #E1BEE7
+    rectangle "pandas / numpy / pyarrow\n(数据处理/分析)" as pandas #CE93D8
+}
+
+rectangle "**媒体处理层 (Media Processing)**" <<layer>> as L6 #E0F7FA {
+    rectangle "Pillow / OpenCV 4.11\n(图像编辑/合成)" as cv2 #B2EBF2
+    rectangle "Real-ESRGAN-ncnn-vulkan\n(本地 AI 超分, anime模型)" as esrgan #B2EBF2
+    rectangle "FFmpeg 4.2.2 / PyAV\n(视频编解码/合成)" as ffmpeg #B2EBF2
+    rectangle "pymediainfo\n(媒体元数据)" as media #B2EBF2
+    rectangle "pyJianYingDraft 0.2.4\n(剪映草稿生成)" as jianying #80DEEA
+}
+
+rectangle "**基础设施层 (Infrastructure)**" <<layer>> as L7 #EFEBE9 {
+    rectangle "aiohttp / websockets / curl_cffi\n(异步HTTP/TLS指纹)" as net #D7CCC8
+    rectangle "cryptography / bcrypt / pynacl\n(加密/哈希/签名)" as crypto #D7CCC8
+    rectangle "jieba\n(中文分词)" as nlp #D7CCC8
+    rectangle "psutil / pywin32\n(系统监控/Windows API)" as sys #D7CCC8
+    rectangle "ADB / HDC / scrcpy\n(Android/鸿蒙设备控制)" as device #BCAAA4
+    rectangle "pythonnet\n(.NET 互操作)" as dotnet #D7CCC8
+    rectangle "PyArmor Runtime 015151\n(代码保护)" as armor #BCAAA4
+}
+
+L1 -[hidden]down- L2
+L2 -[hidden]down- L3
+L3 -[hidden]down- L4
+L4 -[hidden]down- L5
+L5 -[hidden]down- L6
+L6 -[hidden]down- L7
+
+@enduml
