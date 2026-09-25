@@ -15,8 +15,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATA_DIR / 'cinegacha.db'}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Fernet 加密密钥
-    FERNET_KEY = os.environ.get("FERNET_KEY")
+    # Fernet 加密密钥（开发环境使用固定默认值，生产环境必须通过环境变量设置）
+    FERNET_KEY = os.environ.get("FERNET_KEY", "dev-fernet-key-32-bytes-long!!!!!")
 
     # 输出目录
     OUTPUT_DIR = BASE_DIR / "Output"
