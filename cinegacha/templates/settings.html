@@ -1,0 +1,179 @@
+<!-- [AGC:FILE] tool=Cc author=fangkun date=2026-09-25 -->
+{% extends "base.html" %}
+
+{% block title %}设置 - 雪漫画{% endblock %}
+
+{% block content %}
+<!-- [AGC:START] tool=Cc author=fangkun -->
+<div class="card">
+    <h2>知乎账号</h2>
+    <div id="zhihu-status" hx-get="/api/settings/zhihu/status" hx-trigger="load, zhihu-updated from:body" hx-swap="innerHTML">
+        <p>加载中...</p>
+    </div>
+    <button class="btn btn-success"
+            hx-post="/api/settings/zhihu/login"
+            hx-target="#login-result"
+            hx-swap="innerHTML">
+        登录知乎
+    </button>
+    <div id="login-result" style="margin-top: 1rem;"></div>
+</div>
+
+<div class="card">
+    <h2>系统配置</h2>
+    <div id="settings-list" hx-get="/api/settings" hx-trigger="load, zhihu-updated from:body" hx-swap="innerHTML">
+        <p>加载中...</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>添加配置</h2>
+    <form id="add-setting-form">
+        <label for="setting-key">配置键</label>
+        <select id="setting-key" name="key" required>
+            <option value="">-- 选择配置 --</option>
+            <option value="zhihu_cookie">zhihu_cookie（知乎登录 Cookie）</option>
+            <option value="zhihu_user_agent">zhihu_user_agent（知乎 User-Agent）</option>
+        </select>
+
+        <label for="setting-value">配置值</label>
+        <input type="text" id="setting-value" name="value" required placeholder="输入配置值...">
+
+        <label for="setting-encrypted">
+            <input type="checkbox" id="setting-encrypted" name="encrypted" checked>
+            加密存储
+        </label>
+
+        <button type="submit" class="btn btn-success">保存</button>
+    </form>
+    <div id="add-result" style="margin-top: 1rem;"></div>
+</div>
+
+<script>
+// [AGC:START] tool=Cc author=fangkun
+(function() {
+    // 知乎状态渲染模板
+    function renderZhihuStatus(data) {
+        if (data.logged_in) {
+            return '<div class="alert alert-success">' +
+                   '✅ 已登录 — Cookie: <code>' + (data.cookie_preview || '') + '</code>' +
+                   '</div>';
+        }
+        return '<div class="alert alert-error">❌ 未登录 — 请点击"登录知乎"按钮</div>';
+    }
+
+    // 设置列表渲染模板
+    function renderSettingsList(items) {
+        if (!items || items.length === 0) {
+            return '<p>暂无配置</p>';
+        }
+        let html = '<table style="width:100%; border-collapse: collapse;">' +
+                   '<thead><tr><th style="text-align:left; padding:0.5rem; border-bottom:2px solid #ddd;">键</th>' +
+                   '<th style="text-align:left; padding:0.5rem; border-bottom:2px solid #ddd;">值</th>' +
+                   '<th style="text-align:left; padding:0.5rem; border-bottom:2px solid #ddd;">加密</th>' +
+                   '<th style="padding:0.5rem; border-bottom:2px solid #ddd;">操作</th></tr></thead><tbody>';
+        items.forEach(function(item) {
+            const encrypted = item.is_encrypted === 1 ? '🔒' : '🔓';
+            html += '<tr>' +
+                    '<td style="padding:0.5rem; border-bottom:1px solid #eee;"><code>' + item.key + '</code></td>' +
+                    '<td style="padding:0.5rem; border-bottom:1px solid #eee;"><code>' + item.value + '</code></td>' +
+                    '<td style="padding:0.5rem; border-bottom:1px solid #eee;">' + encrypted + '</td>' +
+                    '<td style="padding:0.5rem; border-bottom:1px solid #eee;">' +
+                    '<button class="btn btn-danger" style="padding:0.25rem 0.5rem; font-size:0.875rem;" ' +
+                    'hx-delete="/api/settings/' + item.key + '" ' +
+                    'hx-confirm="确定删除 ' + item.key + '?" ' +
+                    'hx-target="#settings-list" hx-swap="innerHTML">删除</button>' +
+                    '</td></tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
+    // 监听 htmx 响应并渲染
+    document.body.addEventListener('htmx:afterOnPreProcess', function() {});
+
+    // 用 htmx:afterRequest 来处理自定义渲染
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        const target = evt.detail.target;
+        if (target.id === 'zhihu-status') {
+            try {
+                const data = JSON.parse(target.textContent);
+                if (data.success) {
+                    target.innerHTML = renderZhihuStatus(data.data);
+                }
+            } catch (e) { /* 非 JSON，保留原始内容 */ }
+        }
+        if (target.id === 'settings-list') {
+            try {
+                const data = JSON.parse(target.textContent);
+                if (data.success) {
+                    target.innerHTML = renderSettingsList(data.data);
+                }
+            } catch (e) { /* 非 JSON */ }
+        }
+        if (target.id === 'login-result') {
+            try {
+                const data = JSON.parse(target.textContent);
+                if (data.success) {
+                    target.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+                    // 触发生知乎状态更新
+                    document.body.dispatchEvent(new Event('zhihu-updated'));
+                } else {
+                    target.innerHTML = '<div class="alert alert-error">登录失败: ' +
+                        (data.error ? data.error.message : '未知错误') + '</div>';
+                }
+            } catch (e) {
+                target.innerHTML = '<div class="alert alert-error">请求失败</div>';
+            }
+        }
+        if (target.id === 'add-result') {
+            try {
+                const data = JSON.parse(target.textContent);
+                if (data.success) {
+                    target.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+                    document.getElementById('add-setting-form').reset();
+                    document.body.dispatchEvent(new Event('zhihu-updated'));
+                } else {
+                    target.innerHTML = '<div class="alert alert-error">保存失败: ' +
+                        (data.error ? data.error.message : '未知错误') + '</div>';
+                }
+            } catch (e) {
+                target.innerHTML = '<div class="alert alert-error">请求失败</div>';
+            }
+        }
+    });
+
+    // 添加配置表单提交
+    document.getElementById('add-setting-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const key = document.getElementById('setting-key').value;
+        const value = document.getElementById('setting-value').value;
+        const encrypted = document.getElementById('setting-encrypted').checked;
+
+        fetch('/api/settings/' + key, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({value: value, encrypted: encrypted})
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            const resultEl = document.getElementById('add-result');
+            if (data.success) {
+                resultEl.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+                document.getElementById('add-setting-form').reset();
+                document.body.dispatchEvent(new Event('zhihu-updated'));
+            } else {
+                resultEl.innerHTML = '<div class="alert alert-error">保存失败: ' +
+                    (data.error ? data.error.message : '未知错误') + '</div>';
+            }
+        })
+        .catch(function() {
+            document.getElementById('add-result').innerHTML =
+                '<div class="alert alert-error">请求失败</div>';
+        });
+    });
+})();
+// [AGC:END]
+</script>
+<!-- [AGC:END] -->
+{% endblock %}
