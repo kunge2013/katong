@@ -1,0 +1,11 @@
+# [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
+flask>=3.0
+flask-sqlalchemy>=3.1
+sqlalchemy>=2.0
+cryptography>=41.0
+httpx>=0.25
+beautifulsoup4>=4.12
+lxml>=4.9
+playwright>=1.40
+pytest>=7.0
+pytest-cov>=4.1
