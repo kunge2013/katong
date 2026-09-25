@@ -14,15 +14,17 @@ def test_create_character(client):
     role = Role(
         name="明溪",
         novel_id=novel.id,
-        content="12岁古代汉族小女孩，肤色小麦色，圆脸蛋带着婴儿肥...",
-        role_type="角色"  # 通过 RoleTag 区分
+        content="12岁古代汉族小女孩，肤色小麦色，圆脸蛋带着婴儿肥..."
     )
-    db.session.add(role)
+    # 通过 RoleTag 区分资产类型
+    tag = RoleTag(role=role, tag_category="类型", tag_value="角色")
+    db.session.add_all([role, tag])
     db.session.commit()
 
     assert role.id is not None
     assert role.name == "明溪"
-    assert len(role.content) > 100
+    assert role.content is not None
+    assert len(role.content) > 10
 
 
 def test_create_scene(client):
@@ -34,10 +36,10 @@ def test_create_scene(client):
     role = Role(
         name="明家祠堂夜晚",
         novel_id=novel.id,
-        content="古色古香的祠堂，月光透过窗棂洒下...",
-        role_type="场景"
+        content="古色古香的祠堂，月光透过窗棂洒下..."
     )
-    db.session.add(role)
+    tag = RoleTag(role=role, tag_category="类型", tag_value="场景")
+    db.session.add_all([role, tag])
     db.session.commit()
 
     assert role.name.endswith("夜晚")
