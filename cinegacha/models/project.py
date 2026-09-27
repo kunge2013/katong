@@ -1,11 +1,11 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
-from cinegacha import db
+from cinegacha import Base
 from cinegacha.models.base import TimestampMixin
 
 
-class Project(TimestampMixin, db.Model):
+class Project(TimestampMixin, Base):
     """项目表"""
     __tablename__ = "projects"
 

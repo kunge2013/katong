@@ -281,20 +281,45 @@ def start_browser_login(timeout: int = 300) -> str:
             "&& playwright install chromium"
         ) from e
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        try:
-            context = browser.new_context()
-            page = context.new_page()
-            page.goto("https://www.zhihu.com/signin")
-            page.wait_for_url("**/www.zhihu.com/?**", timeout=timeout * 1000)
-            cookies = context.cookies()
-            z_c0 = next(
-                (c["value"] for c in cookies if c["name"] == "z_c0"), None
-            )
-            if z_c0 is None:
-                raise ZhihuAuthError("登录成功但未找到 z_c0 cookie")
-            return z_c0
-        finally:
-            browser.close()
+    import os
+
+    # 临时禁用代理（避免系统代理导致 Playwright 连接失败）
+    old_no_proxy = os.environ.get("NO_PROXY")
+    old_http_proxy = os.environ.get("HTTP_PROXY")
+    old_https_proxy = os.environ.get("HTTPS_PROXY")
+    os.environ["NO_PROXY"] = "*"
+    os.environ.pop("HTTP_PROXY", None)
+    os.environ.pop("HTTPS_PROXY", None)
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=False, args=["--no-proxy-server"])
+            try:
+                context = browser.new_context()
+                page = context.new_page()
+                page.goto("https://www.zhihu.com/signin")
+                # 等待登录成功：URL 变为知乎首页（可能有也可能没有查询参数）
+                page.wait_for_url("**/zhihu.com/**", timeout=timeout * 1000)
+                # 额外等待确保 cookie 写入
+                import time
+                time.sleep(3)
+                cookies = context.cookies()
+                z_c0 = next(
+                    (c["value"] for c in cookies if c["name"] == "z_c0"), None
+                )
+                if z_c0 is None:
+                    raise ZhihuAuthError("登录成功但未找到 z_c0 cookie")
+                return z_c0
+            finally:
+                browser.close()
+    finally:
+        # 恢复原始代理环境变量
+        if old_no_proxy is not None:
+            os.environ["NO_PROXY"] = old_no_proxy
+        else:
+            os.environ.pop("NO_PROXY", None)
+        if old_http_proxy is not None:
+            os.environ["HTTP_PROXY"] = old_http_proxy
+        if old_https_proxy is not None:
+            os.environ["HTTPS_PROXY"] = old_https_proxy
 # [AGC:END]

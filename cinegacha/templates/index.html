@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 雪漫画{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>欢迎使用雪漫画</h2>
+    <p style="margin: 1rem 0;">
+        雪漫画是一个 AI 驱动的小说转漫画分镜系统。您可以将网络小说转换为漫画分镜图像。
+    </p>
+</div>
+
+<div class="card">
+    <h3>快速开始</h3>
+    <ol style="margin: 1rem 0; padding-left: 2rem;">
+        <li><strong>创建小说</strong> - 导入小说文本或 URL</li>
+        <li><strong>清洗文本</strong> - 执行 4 步清洗流水线</li>
+        <li><strong>提取资产</strong> - 自动识别角色、场景、道具</li>
+        <li><strong>创建项目</strong> - 配置画风和模型参数</li>
+        <li><strong>生成分镜</strong> - AI 拆分为漫画分镜</li>
+        <li><strong>推导提示词</strong> - 生成图像提示词</li>
+        <li><strong>生成图像</strong> - AI 生成漫画分镜图像</li>
+    </ol>
+</div>
+
+<div class="card">
+    <h3>系统状态</h3>
+    <div style="margin-top: 1rem;">
+        <p><strong>小说数量：</strong> <span id="novel-count">{{ novel_count }}</span></p>
+        <p><strong>项目数量：</strong> <span id="project-count">{{ project_count }}</span></p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>API 文档</h3>
+    <p style="margin: 1rem 0;">
+        所有 API 端点以 <code>/api/</code> 开头，返回 JSON 格式数据。
+    </p>
+    <ul style="margin-left: 2rem;">
+        <li><code>GET /api/novels</code> - 列表小说</li>
+        <li><code>POST /api/novels</code> - 创建小说</li>
+        <li><code>POST /api/novels/:id/clean</code> - 清洗小说</li>
+        <li><code>GET /api/projects/:id/assets</code> - 列表资产</li>
+        <li><code>POST /api/projects/:id/storyboard/split</code> - 分镜拆分</li>
+        <li><code>POST /api/scripts/:id/derive</code> - 推导提示词</li>
+    </ul>
+</div>
+{% endblock %}

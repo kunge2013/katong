@@ -1,8 +1,8 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, DateTime
-from cinegacha import db
+from sqlalchemy import Column, DateTime
+from cinegacha import Base
 
 
 class TimestampMixin:

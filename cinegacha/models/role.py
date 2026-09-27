@@ -2,11 +2,11 @@
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from cinegacha import db
+from cinegacha import Base
 from cinegacha.models.base import TimestampMixin
 
 
-class Role(TimestampMixin, db.Model):
+class Role(TimestampMixin, Base):
     """资产表（角色/场景/道具统一存储）"""
     __tablename__ = "roles"
 
@@ -33,7 +33,7 @@ class Role(TimestampMixin, db.Model):
     tags = relationship("RoleTag", back_populates="role", cascade="all, delete-orphan")
 
 
-class RoleTag(db.Model):
+class RoleTag(Base):
     """资产标签表"""
     __tablename__ = "role_tags"
 

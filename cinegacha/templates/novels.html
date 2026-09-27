@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}小说管理 - 雪漫画{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>小说列表</h2>
+    <a href="/novels/new" class="btn" style="margin-top: 1rem;">+ 创建新小说</a>
+</div>
+
+<div class="card">
+    <div id="novel-list">
+        {% for novel in novels %}
+        <div class="list-item">
+            <div>
+                <strong>{{ novel.name }}</strong>
+                <div style="font-size: 0.875rem; color: #666;">
+                    字数：{{ novel.word_count }} |
+                    清洗状态：
+                    {% if novel.is_format_cleaned %}✅{% else %}❌{% endif %} 格式
+                    {% if novel.is_serial_cleaned %}✅{% else %}❌{% endif %} 串行
+                    {% if novel.is_punct_cleaned %}✅{% else %}❌{% endif %} 标点
+                </div>
+            </div>
+            <div>
+                <a href="/novels/{{ novel.id }}" class="btn">查看</a>
+                <button
+                    hx-post="/api/novels/{{ novel.id }}/clean"
+                    hx-target="closest .list-item"
+                    hx-swap="outerHTML"
+                    class="btn btn-success">
+                    清洗
+                </button>
+                <button
+                    hx-delete="/api/novels/{{ novel.id }}"
+                    hx-confirm="确定删除此小说？"
+                    hx-target="closest .list-item"
+                    hx-swap="outerHTML"
+                    class="btn btn-danger">
+                    删除
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <p style="text-align: center; padding: 2rem; color: #666;">
+            暂无小说，请创建新小说
+        </p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

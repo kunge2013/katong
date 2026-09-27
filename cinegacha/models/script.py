@@ -1,11 +1,11 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
-from cinegacha import db
+from cinegacha import Base
 from cinegacha.models.base import TimestampMixin
 
 
-class Script(TimestampMixin, db.Model):
+class Script(TimestampMixin, Base):
     """分镜表（manga 模式）"""
     __tablename__ = "scripts_list"
 
@@ -26,7 +26,7 @@ class Script(TimestampMixin, db.Model):
     candidate_images = Column(Text)  # 候选图 JSON
 
 
-class ScriptCamera(TimestampMixin, db.Model):
+class ScriptCamera(TimestampMixin, Base):
     """分镜表（camera 模式）"""
     __tablename__ = "scripts_camera"
 

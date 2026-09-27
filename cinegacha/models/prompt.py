@@ -1,11 +1,11 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 from sqlalchemy import Column, Integer, String, Text
-from cinegacha import db
+from cinegacha import Base
 from cinegacha.models.base import TimestampMixin
 
 
-class Prompt(TimestampMixin, db.Model):
+class Prompt(TimestampMixin, Base):
     """提示词模板表（Fernet 加密）"""
     __tablename__ = "prompts"
 

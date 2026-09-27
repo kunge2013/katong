@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ novel.name }} - 雪漫画{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{{ novel.name }}</h2>
+    <div style="margin-top: 1rem;">
+        <p><strong>字数：</strong> {{ novel.word_count }}</p>
+        <p><strong>创建时间：</strong> {{ novel.created_at }}</p>
+        <p><strong>清洗状态：</strong></p>
+        <ul style="margin-left: 2rem;">
+            <li>格式清洗：{% if novel.is_format_cleaned %}✅ 已清洗{% else %}❌ 未清洗{% endif %}</li>
+            <li>串行清洗：{% if novel.is_serial_cleaned %}✅ 已清洗{% else %}❌ 未清洗{% endif %}</li>
+            <li>标点清洗：{% if novel.is_punct_cleaned %}✅ 已清洗{% else %}❌ 未清洗{% endif %}</li>
+            <li>分镜清洗：{% if novel.is_shot_cleaned %}✅ 已清洗{% else %}❌ 未清洗{% endif %}</li>
+        </ul>
+    </div>
+    <div style="margin-top: 1rem;">
+        <button
+            hx-post="/api/novels/{{ novel.id }}/clean"
+            hx-target="#clean-result"
+            hx-swap="innerHTML"
+            class="btn btn-success">
+            执行清洗
+        </button>
+        <a href="/novels" class="btn">返回列表</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>清洗结果</h3>
+    <div id="clean-result">
+        <p style="color: #666;">点击"执行清洗"按钮查看结果</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>小说内容预览</h3>
+    <div style="margin-top: 1rem; max-height: 400px; overflow-y: auto; background: #f9f9f9; padding: 1rem; border-radius: 4px;">
+        <pre style="white-space: pre-wrap; font-family: inherit;">{{ novel.content[:2000] if novel.content else novel.original_text[:2000] }}{% if novel.content and novel.content|length > 2000 %}...{% endif %}</pre>
+    </div>
+</div>
+{% endblock %}

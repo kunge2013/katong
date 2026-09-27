@@ -1,11 +1,11 @@
 # [AGC:FILE] tool=Cc author=fangkun date=2026-09-25
 
 from sqlalchemy import Column, Integer, String, Text
-from cinegacha import db
+from cinegacha import Base
 from cinegacha.models.base import TimestampMixin
 
 
-class Setting(TimestampMixin, db.Model):
+class Setting(TimestampMixin, Base):
     """系统配置表（部分 Fernet 加密）"""
     __tablename__ = "settings"
 
